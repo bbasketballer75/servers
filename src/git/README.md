@@ -1,347 +1,248 @@
-# mcp-server-git: A git MCP server
+<div align="center">
+
+# @cyanheads/git-mcp-server
+
+**Empower your AI agents with comprehensive, secure, and programmatic control over Git repositories!**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-^5.8.3-blue?style=flat-square)](https://www.typescriptlang.org/)
+[![Model Context Protocol SDK](https://img.shields.io/badge/MCP%20SDK-^1.18.0-green?style=flat-square)](https://github.com/modelcontextprotocol/typescript-sdk)
+[![MCP Spec Version](https://img.shields.io/badge/MCP%20Spec-2025--06--18-lightgrey?style=flat-square)](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2025-06-18/changelog.mdx)
+[![Version](https://img.shields.io/badge/Version-2.3.3-blue?style=flat-square)](./CHANGELOG.md)
+[![Coverage](https://img.shields.io/badge/Coverage-17.04%25-red?style=flat-square)](./vitest.config.ts)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
+[![Status](https://img.shields.io/badge/Status-Stable-green?style=flat-square)](https://github.com/cyanheads/git-mcp-server/issues)
+[![GitHub](https://img.shields.io/github/stars/cyanheads/git-mcp-server?style=social)](https://github.com/cyanheads/git-mcp-server)
+
+</div>
+
+An MCP (Model Context Protocol) server providing a robust, LLM-friendly interface to the standard `git` command-line tool. Enables LLMs and AI agents to perform a wide range of Git operations like clone, commit, push, pull, branch, diff, log, status, and more via the MCP standard.
+
+Built on the [`cyanheads/mcp-ts-template`](https://github.com/cyanheads/mcp-ts-template), this server follows a modular architecture with robust error handling, logging, and security features.
+
+## 🤔 Why Use This Server?
+
+- **Automate Git Workflows**: Enable AI agents to programmatically clone, commit, push, and manage branches.
+- **Gain Repository Insights**: Allow tools to check status, view logs, and diff changes without direct shell access.
+- **Integrate Git into AI-driven Development**: Let LLMs manage version control as part of their coding tasks.
+- **Production-Ready Foundation**: Inherits logging, error handling, and security from the template.
+
+## 🚀 Core Capabilities: Git Tools 🛠️
+
+This server equips your AI with a comprehensive suite of tools to interact with Git repositories:
+
+| Tool Category            | Description                                                       | Key Features -                                                                                                                                                                                                                                                                                                                                         |
+| :----------------------- | :---------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Repository & Staging** | Manage repository state, from initialization to staging changes.  | - `git_init`: Initialize a new repository.<br/>- `git_clone`: Clone remote repositories.<br/>- `git_add`: Stage changes for commit.<br/>- `git_status`: Check the status of the working directory.<br/>- `git_clean`: Remove untracked files (requires force flag). -                                                                                  |
+| **Committing & History** | Create commits, inspect history, and view changes over time.      | - `git_commit`: Create new commits with conventional messages.<br/>- `git_log`: View commit history with filtering options.<br/>- `git_diff`: Show changes between commits, branches, or the working tree.<br/>- `git_show`: Inspect Git objects like commits and tags. -                                                                              |
+| **Branching & Merging**  | Manage branches, merge changes, and rebase commits.               | - `git_branch`: List, create, delete, and rename branches.<br/>- `git_checkout`: Switch between branches or commits.<br/>- `git_merge`: Merge branches together.<br/>- `git_rebase`: Re-apply commits on top of another base.<br/>- `git_cherry_pick`: Apply specific commits from other branches. -                                                   |
+| **Remote Operations**    | Interact with remote repositories.                                | - `git_remote`: Manage remote repository connections.<br/>- `git_fetch`: Download objects and refs from a remote.<br/>- `git_pull`: Fetch and integrate with another repository.<br/>- `git_push`: Update remote refs with local changes. -                                                                                                            |
+| **Advanced Workflows**   | Support for more complex Git workflows and repository management. | - `git_tag`: Create, list, or delete tags.<br/>- `git_stash`: Temporarily store modified files.<br/>- `git_worktree`: Manage multiple working trees attached to a single repository.<br/>- `git_set_working_dir`: Set a persistent working directory for a session.<br/>- `git_wrapup_instructions`: Get a standard workflow for finalizing changes. - |
+
+---
+
+## Table of Contents
+
+| [Overview](#overview) | [Features](#features) | [Installation](#installation) |
+| [Configuration](#configuration) | [Project Structure](#project-structure) |
+| [Tools](#tools) | [Resources](#resources) | [Development](#development) | [License](#license) |
 
 ## Overview
 
-A Model Context Protocol server for Git repository interaction and automation. This server provides tools to read, search, and manipulate Git repositories via Large Language Models.
+The Git MCP Server acts as a bridge, allowing applications (MCP Clients) that understand the Model Context Protocol (MCP) – like advanced AI coding assistants (LLMs), IDE extensions, or custom research tools – to interact directly and safely with local Git repositories.
 
-Please note that mcp-server-git is currently in early development. The functionality and available tools are subject to change and expansion as we continue to develop and improve the server.
+Instead of complex scripting or manual command-line interaction, your tools can leverage this server to:
 
-### Tools
+- **Automate Git workflows**: Clone repositories, create branches, stage changes, commit work, push updates, and manage tags programmatically.
+- **Gain repository insights**: Check status, view logs, diff changes, and inspect Git objects without leaving the host application.
+- **Integrate Git into AI-driven development**: Enable LLMs to manage version control as part of their coding or refactoring tasks, ensuring code integrity and history.
+- **Support CI/CD and DevOps automation**: Build custom scripts and tools that orchestrate complex Git operations for automated builds, testing, and deployments.
 
-1. `git_status`
-   - Shows the working tree status
-   - Input:
-     - `repo_path` (string): Path to Git repository
-   - Returns: Current status of working directory as text output
+Built on the robust `mcp-ts-template`, this server provides a standardized, secure, and efficient way to expose Git functionality via the MCP standard. It achieves this by securely executing the standard `git` command-line tool installed on the system using Node.js's `child_process` module, ensuring compatibility and leveraging the full power of Git.
 
-2. `git_diff_unstaged`
-   - Shows changes in working directory not yet staged
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `context_lines` (number, optional): Number of context lines to show (default: 3)
-   - Returns: Diff output of unstaged changes
+> **Developer Note**: This repository includes a [.clinerules](.clinerules) file that serves as a developer cheat sheet for your LLM coding agent with quick reference for the codebase patterns, file locations, and code snippets.
 
-3. `git_diff_staged`
-   - Shows changes that are staged for commit
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `context_lines` (number, optional): Number of context lines to show (default: 3)
-   - Returns: Diff output of staged changes
+## Features
 
-4. `git_diff`
-   - Shows differences between branches or commits
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `target` (string): Target branch or commit to compare with
-     - `context_lines` (number, optional): Number of context lines to show (default: 3)
-   - Returns: Diff output comparing current state with target
+### Core Utilities
 
-5. `git_commit`
-   - Records changes to the repository
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `message` (string): Commit message
-   - Returns: Confirmation with new commit hash
+Leverages the robust utilities provided by the `mcp-ts-template`:
 
-6. `git_add`
-   - Adds file contents to the staging area
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `files` (string[]): Array of file paths to stage
-   - Returns: Confirmation of staged files
+- **Logging**: Structured, configurable logging (file rotation, stdout JSON, MCP notifications) with sensitive data redaction.
+- **Error Handling**: Centralized error processing, standardized error types (`McpError`), and automatic logging.
+- **Configuration**: Environment variable loading (`dotenv`) with comprehensive validation.
+- **Input Validation/Sanitization**: Uses `zod` for schema validation and custom sanitization logic (crucial for paths).
+- **Request Context**: Tracking and correlation of operations via unique request IDs using `AsyncLocalStorage`.
+- **Type Safety**: Strong typing enforced by TypeScript and Zod schemas.
+- **HTTP Transport**: High-performance HTTP server using **Hono**, featuring session management, CORS, and authentication support.
+- **Deployment**: Multi-stage `Dockerfile` for creating small, secure production images with native dependency support.
 
-7. `git_reset`
-   - Unstages all staged changes
-   - Input:
-     - `repo_path` (string): Path to Git repository
-   - Returns: Confirmation of reset operation
+### Git Integration
 
-8. `git_log`
-   - Shows the commit logs with optional date filtering
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `max_count` (number, optional): Maximum number of commits to show (default: 10)
-     - `start_timestamp` (string, optional): Start timestamp for filtering commits. Accepts ISO 8601 format (e.g., '2024-01-15T14:30:25'), relative dates (e.g., '2 weeks ago', 'yesterday'), or absolute dates (e.g., '2024-01-15', 'Jan 15 2024')
-     - `end_timestamp` (string, optional): End timestamp for filtering commits. Accepts ISO 8601 format (e.g., '2024-01-15T14:30:25'), relative dates (e.g., '2 weeks ago', 'yesterday'), or absolute dates (e.g., '2024-01-15', 'Jan 15 2024')
-   - Returns: Array of commit entries with hash, author, date, and message
-
-9. `git_create_branch`
-   - Creates a new branch
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `branch_name` (string): Name of the new branch
-     - `start_point` (string, optional): Starting point for the new branch
-   - Returns: Confirmation of branch creation
-10. `git_checkout`
-   - Switches branches
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `branch_name` (string): Name of branch to checkout
-   - Returns: Confirmation of branch switch
-11. `git_show`
-   - Shows the contents of a commit
-   - Inputs:
-     - `repo_path` (string): Path to Git repository
-     - `revision` (string): The revision (commit hash, branch name, tag) to show
-   - Returns: Contents of the specified commit
-12. `git_init`
-   - Initializes a Git repository
-   - Inputs:
-     - `repo_path` (string): Path to directory to initialize git repo
-   - Returns: Confirmation of repository initialization
-
-13. `git_branch`
-   - List Git branches
-   - Inputs:
-     - `repo_path` (string): Path to the Git repository.
-     - `branch_type` (string): Whether to list local branches ('local'), remote branches ('remote') or all branches('all').
-     - `contains` (string, optional): The commit sha that branch should contain. Do not pass anything to this param if no commit sha is specified
-     - `not_contains` (string, optional): The commit sha that branch should NOT contain. Do not pass anything to this param if no commit sha is specified
-   - Returns: List of branches
+- **Direct Git CLI Execution**: Interacts with Git by securely executing the standard `git` command-line tool via Node.js `child_process`, ensuring full compatibility and access to Git's features.
+- **Comprehensive Command Coverage**: Exposes a wide range of Git commands as MCP tools (see [Tools](#tools) section).
+- **Repository Interaction**: Supports status checking, branching, staging, committing, fetching, pulling, pushing, diffing, logging, resetting, tagging, and more.
+- **Working Directory Management**: Allows setting and clearing a session-specific working directory for context persistence across multiple Git operations.
+- **Safety Features**: Includes checks and requires explicit confirmation for potentially destructive operations like `git clean` and `git reset --hard`.
+- **Commit Signing**: Supports GPG or SSH signing for verified commits, controlled via the `GIT_SIGN_COMMITS` environment variable and server-side Git configuration. Includes an optional tool parameter to fall back to unsigned commits on signing failure.
 
 ## Installation
 
-### Using uv (recommended)
+### Prerequisites
 
-When using [`uv`](https://docs.astral.sh/uv/) no specific installation is needed. We will
-use [`uvx`](https://docs.astral.sh/uv/guides/tools/) to directly run *mcp-server-git*.
+- [Node.js (>=20.0.0)](https://nodejs.org/)
+- [npm](https://www.npmjs.com/) (comes with Node.js)
+- [Git](https://git-scm.com/) installed and accessible in the system PATH.
 
-### Using PIP
+### MCP Client Settings
 
-Alternatively you can install `mcp-server-git` via pip:
-
-```
-pip install mcp-server-git
-```
-
-After installation, you can run it as a script using:
-
-```
-python -m mcp_server_git
-```
-
-## Configuration
-
-### Usage with Claude Desktop
-
-Add this to your `claude_desktop_config.json`:
-
-<details>
-<summary>Using uvx</summary>
-
-```json
-"mcpServers": {
-  "git": {
-    "command": "uvx",
-    "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
-  }
-}
-```
-</details>
-
-<details>
-<summary>Using docker</summary>
-
-* Note: replace '/Users/username' with the a path that you want to be accessible by this tool
-
-```json
-"mcpServers": {
-  "git": {
-    "command": "docker",
-    "args": ["run", "--rm", "-i", "--mount", "type=bind,src=/Users/username,dst=/Users/username", "mcp/git"]
-  }
-}
-```
-</details>
-
-<details>
-<summary>Using pip installation</summary>
-
-```json
-"mcpServers": {
-  "git": {
-    "command": "python",
-    "args": ["-m", "mcp_server_git", "--repository", "path/to/git/repo"]
-  }
-}
-```
-</details>
-
-### Usage with VS Code
-
-For quick installation, use one of the one-click install buttons below...
-
-[![Install with UV in VS Code](https://img.shields.io/badge/VS_Code-UV-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=git&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22mcp-server-git%22%5D%7D) [![Install with UV in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-UV-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=git&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22mcp-server-git%22%5D%7D&quality=insiders)
-
-[![Install with Docker in VS Code](https://img.shields.io/badge/VS_Code-Docker-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=git&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22--rm%22%2C%22-i%22%2C%22--mount%22%2C%22type%3Dbind%2Csrc%3D%24%7BworkspaceFolder%7D%2Cdst%3D%2Fworkspace%22%2C%22mcp%2Fgit%22%5D%7D) [![Install with Docker in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Docker-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=git&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22--rm%22%2C%22-i%22%2C%22--mount%22%2C%22type%3Dbind%2Csrc%3D%24%7BworkspaceFolder%7D%2Cdst%3D%2Fworkspace%22%2C%22mcp%2Fgit%22%5D%7D&quality=insiders)
-
-For manual installation, you can configure the MCP server using one of these methods:
-
-**Method 1: User Configuration (Recommended)**
-Add the configuration to your user-level MCP configuration file. Open the Command Palette (`Ctrl + Shift + P`) and run `MCP: Open User Configuration`. This will open your user `mcp.json` file where you can add the server configuration.
-
-**Method 2: Workspace Configuration**
-Alternatively, you can add the configuration to a file called `.vscode/mcp.json` in your workspace. This will allow you to share the configuration with others.
-
-> For more details about MCP configuration in VS Code, see the [official VS Code MCP documentation](https://code.visualstudio.com/docs/copilot/mcp).
+Add the following to your MCP client's configuration file (e.g., `cline_mcp_settings.json`). This configuration uses `npx` to run the server, which will automatically install the package if not already present:
 
 ```json
 {
-  "servers": {
-    "git": {
-      "command": "uvx",
-      "args": ["mcp-server-git"]
-    }
-  }
-}
-```
-
-For Docker installation:
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "git": {
-        "command": "docker",
-        "args": [
-          "run",
-          "--rm",
-          "-i",
-          "--mount", "type=bind,src=${workspaceFolder},dst=/workspace",
-          "mcp/git"
-        ]
+  "mcpServers": {
+    "git-mcp-server": {
+      "command": "npx",
+      "args": ["@cyanheads/git-mcp-server"],
+      "env": {
+        "MCP_LOG_LEVEL": "info",
+        "GIT_SIGN_COMMITS": "false"
       }
     }
   }
 }
 ```
 
-### Usage with [Zed](https://github.com/zed-industries/zed)
+### If running manually (not via MCP client) for development or testing
 
-Add to your Zed settings.json:
+#### Install via npm
 
-<details>
-<summary>Using uvx</summary>
-
-```json
-"context_servers": [
-  "mcp-server-git": {
-    "command": {
-      "path": "uvx",
-      "args": ["mcp-server-git"]
-    }
-  }
-],
-```
-</details>
-
-<details>
-<summary>Using pip installation</summary>
-
-```json
-"context_servers": {
-  "mcp-server-git": {
-    "command": {
-      "path": "python",
-      "args": ["-m", "mcp_server_git"]
-    }
-  }
-},
-```
-</details>
-
-### Usage with [Zencoder](https://zencoder.ai)
-
-1. Go to the Zencoder menu (...)
-2. From the dropdown menu, select `Agent Tools`
-3. Click on the `Add Custom MCP`
-4. Add the name (i.e. git) and server configuration from below, and make sure to hit the `Install` button
-
-<details>
-<summary>Using uvx</summary>
-
-```json
-{
-    "command": "uvx",
-    "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
-}
-```
-</details>
-
-## Debugging
-
-You can use the MCP inspector to debug the server. For uvx installations:
-
-```
-npx @modelcontextprotocol/inspector uvx mcp-server-git
+```bash
+npm install @cyanheads/git-mcp-server
 ```
 
-Or if you've installed the package in a specific directory or are developing on it:
+### 3. Running the Server
 
-```
-cd path/to/servers/src/git
-npx @modelcontextprotocol/inspector uv run mcp-server-git
+- **Production (Stdio):**
+  ```bash
+  npm run start:stdio
+  ```
+- **Production (HTTP):**
+  ```bash
+  npm run start:http
+  ```
+- **Development (Stdio with watch mode):**
+  ```bash
+  npm run dev:stdio
+  ```
+- **Development (HTTP with watch mode):**
+  ```bash
+  npm run dev:http
+  ```
+
+## ⚙️ Configuration
+
+Configure the server using these environment variables (or a `.env` file):
+
+| Variable              | Description                                                                                                                           | Default     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `MCP_TRANSPORT_TYPE`  | Transport mechanism: `stdio` or `http`.                                                                                               | `stdio`     |
+| `MCP_HTTP_PORT`       | Port for the HTTP server (if `MCP_TRANSPORT_TYPE=http`). Retries next ports if busy.                                                  | `3015`      |
+| `MCP_HTTP_HOST`       | Host address for the HTTP server (if `MCP_TRANSPORT_TYPE=http`).                                                                      | `127.0.0.1` |
+| `MCP_ALLOWED_ORIGINS` | Comma-separated list of allowed origins for CORS (if `MCP_TRANSPORT_TYPE=http`).                                                      | (none)      |
+| `MCP_LOG_LEVEL`       | Logging level (`debug`, `info`, `notice`, `warning`, `error`, `crit`, `alert`, `emerg`). Inherited from template.                     | `info`      |
+| `GIT_SIGN_COMMITS`    | Set to `"true"` to enable signing attempts for commits made by the `git_commit` tool. Requires server-side Git/key setup (see below). | `false`     |
+| `MCP_AUTH_MODE`       | Authentication mode: `jwt`, `oauth`, or `none`.                                                                                       | `none`      |
+| `MCP_AUTH_SECRET_KEY` | Secret key for JWT validation (if `MCP_AUTH_MODE=jwt`).                                                                               | `''`        |
+| `OAUTH_ISSUER_URL`    | OIDC issuer URL for OAuth validation (if `MCP_AUTH_MODE=oauth`).                                                                      | `''`        |
+| `OAUTH_AUDIENCE`      | Audience claim for OAuth validation (if `MCP_AUTH_MODE=oauth`).                                                                       | `''`        |
+
+## 🏗️ Project Structure
+
+- **`src/mcp-server/`**: Contains the core MCP server, tools, resources, and transport handlers.
+- **`src/config/`**: Handles loading and validation of environment variables.
+- **`src/types-global/`**: Defines shared TypeScript interfaces and type definitions.
+- **`src/utils/`**: Core utilities (logging, error handling, security, etc.).
+- **`src/index.ts`**: The main entry point that initializes and starts the server.
+
+**Explore the full structure yourself:**
+
+See the current file tree in [docs/tree.md](docs/tree.md) or generate it dynamically:
+
+```bash
+npm run tree
 ```
 
-Running `tail -n 20 -f ~/Library/Logs/Claude/mcp*.log` will show the logs from the server and may
-help you debug any issues.
+## 📦 Resources
+
+In addition to tools, the server provides resources that offer contextual information about the Git environment.
+
+| Resource URI              | Description                                                                                                    |
+| :------------------------ | :------------------------------------------------------------------------------------------------------------- |
+| `git://working-directory` | Returns the currently configured working directory for the session as a JSON object. Shows `NOT_SET` if unset. |
 
 ## Development
 
-If you are doing local development, there are two ways to test your changes:
+This project is set up with modern tooling to ensure code quality and a smooth development experience.
 
-1. Run the MCP inspector to test your changes. See [Debugging](#debugging) for run instructions.
+### Linting and Formatting
 
-2. Test using the Claude desktop app. Add the following to your `claude_desktop_config.json`:
+- **ESLint**: We use ESLint with the `typescript-eslint` plugin to enforce code quality and consistency. Run the linter with:
+  ```bash
+  npm run lint
+  ```
+  To automatically fix issues, run:
+  ```bash
+  npm run lint:fix
+  ```
+- **Prettier**: Code formatting is handled by Prettier. To format the entire codebase, run:
+  ```bash
+  npm run format
+  ```
 
-### Docker
+### Type Checking
 
-```json
-{
-  "mcpServers": {
-    "git": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--mount", "type=bind,src=/Users/username/Desktop,dst=/projects/Desktop",
-        "--mount", "type=bind,src=/path/to/other/allowed/dir,dst=/projects/other/allowed/dir,ro",
-        "--mount", "type=bind,src=/path/to/file.txt,dst=/projects/path/to/file.txt",
-        "mcp/git"
-      ]
-    }
-  }
-}
-```
-
-### UVX
-```json
-{
-"mcpServers": {
-  "git": {
-    "command": "uv",
-    "args": [
-      "--directory",
-      "/<path to mcp-servers>/mcp-servers/src/git",
-      "run",
-      "mcp-server-git"
-    ]
-    }
-  }
-}
-```
-
-## Build
-
-Docker build:
+You can run the TypeScript compiler to check for type errors without emitting any files:
 
 ```bash
-cd src/git
-docker build -t mcp/git .
+npm run typecheck
 ```
 
-## License
+### Testing
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+This server uses [Vitest](https://vitest.dev/) for testing.
+
+- **Run all tests once:**
+  ```bash
+  npm test
+  ```
+- **Run tests in watch mode:**
+  ```bash
+  npm run test:watch
+  ```
+- **Run tests and generate a coverage report:**
+  ```bash
+  npm run test:coverage
+  ```
+
+### Generating Documentation
+
+API documentation is generated from JSDoc comments using [TypeDoc](https://typedoc.org/). To generate the documentation, run:
+
+```bash
+npm run docs:generate
+```
+
+The output will be saved in the `docs/api` directory.
+
+## 🧩 Extending the System
+
+The canonical pattern for adding new tools is defined in the [.clinerules](.clinerules) file. It mandates a strict separation of concerns:
+
+1.  **`logic.ts`**: Contains the pure business logic, Zod schemas, and type definitions. This file throws structured errors on failure.
+2.  **`registration.ts`**: Acts as the "handler." It registers the tool with the server, wraps the logic call in a `try...catch` block, and formats the final success or error response.
+
+This "Logic Throws, Handler Catches" pattern ensures that core logic remains pure and testable, while the registration layer handles all side effects and response formatting.
+
+## 📜 License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
