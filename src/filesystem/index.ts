@@ -14,7 +14,7 @@ import { createReadStream } from "fs";
 import path from "path";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { minimatch } from "minimatch";
+import minimatch from "minimatch";
 import { normalizePath, expandHome } from './path-utils.js';
 import { getValidRootDirectories } from './roots-utils.js';
 import {
