@@ -211,7 +211,7 @@ export const createServer = () => {
       if (!logsUpdateInterval) {
           console.error("Starting logs update interval");
           logsUpdateInterval = setInterval(async () => {
-          await server.sendLoggingMessage( messages[Math.floor(Math.random() * messages.length)], sessionId);
+          await server.sendLoggingMessage({ ...messages[Math.floor(Math.random() * messages.length)], sessionId});
       }, 15000);
     }
   };
@@ -921,14 +921,14 @@ export const createServer = () => {
             level: "info",
             logger: "everything-server",
             data: `Roots updated: ${currentRoots.length} root(s) received from client`,
-        }, sessionId);
+        });
       }
     } catch (error) {
       await server.sendLoggingMessage({
           level: "error",
           logger: "everything-server",
           data: `Failed to request roots from client: ${error instanceof Error ? error.message : String(error)}`,
-      }, sessionId);
+      });
     }
   });
 
@@ -947,27 +947,27 @@ export const createServer = () => {
               level: "info",
               logger: "everything-server",
               data: `Initial roots received: ${currentRoots.length} root(s) from client`,
-          }, sessionId);
+          });
         } else {
           await server.sendLoggingMessage({
               level: "warning",
               logger: "everything-server",
               data: "Client returned no roots set",
-          }, sessionId);
+          });
         }
       } catch (error) {
         await server.sendLoggingMessage({
             level: "error",
             logger: "everything-server",
             data: `Failed to request initial roots from client: ${error instanceof Error ? error.message : String(error)}`,
-        }, sessionId);
+        });
       }
     } else {
       await server.sendLoggingMessage({
           level: "info",
           logger: "everything-server",
           data: "Client does not support MCP roots protocol",
-      }, sessionId);
+      });
     }
   };
 
