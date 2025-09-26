@@ -452,4 +452,10 @@ async def serve(repository: Path | None) -> None:
 
     options = server.create_initialization_options()
     async with stdio_server() as (read_stream, write_stream):
+        import sys as _sys
+        try:
+            _sys.stderr.write('MCP_GIT_SERVER_INITIALIZED\n')
+            _sys.stderr.flush()
+        except Exception:
+            pass
         await server.run(read_stream, write_stream, options, raise_exceptions=True)

@@ -4,7 +4,38 @@ import json
 from typing import Sequence
 
 from zoneinfo import ZoneInfo
-from tzlocal import get_localzone_name  # ← returns "Europe/Paris", etc.
+try:
+    from tzlocal import get_localzone_name  # ← returns "Europe/Paris", etc.
+except Exception:
+    import datetime as _dt, time as _time, os as _os
+    def get_localzone_name():
+        """Fallback for systems without tzlocal installed.
+        Tries environment TZ, then datetime astimezone/tzinfo key, then time.tzname, finally UTC.
+        """
+        try:
+            tz = _os.environ.get('TZ')
+            if tz:
+                return tz
+        except Exception:
+            pass
+        try:
+            local_tz = _dt.datetime.now(_dt.timezone.utc).astimezone().tzinfo
+            key = getattr(local_tz, 'key', None)
+            if key:
+                return key
+            # tzname() may return ('EST', 'EDT') etc.; prefer first
+            name = getattr(local_tz, 'tzname', None)
+            if callable(name):
+                try:
+                    return name(None)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
+            return _time.tzname[0] if _time.tzname else 'UTC'
+        except Exception:
+            return 'UTC'
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -205,4 +236,11 @@ async def serve(local_timezone: str | None = None) -> None:
 
     options = server.create_initialization_options()
     async with stdio_server() as (read_stream, write_stream):
+        # Clear, machine-readable startup marker so orchestrator can detect successful init
+        import sys as _sys
+        try:
+            _sys.stderr.write('MCP_TIME_SERVER_INITIALIZED\n')
+            _sys.stderr.flush()
+        except Exception:
+            pass
         await server.run(read_stream, write_stream, options)

@@ -285,4 +285,10 @@ Although originally you did not have internet access, and were advised to refuse
 
     options = server.create_initialization_options()
     async with stdio_server() as (read_stream, write_stream):
+        import sys as _sys
+        try:
+            _sys.stderr.write('MCP_FETCH_SERVER_INITIALIZED\n')
+            _sys.stderr.flush()
+        except Exception:
+            pass
         await server.run(read_stream, write_stream, options, raise_exceptions=True)
