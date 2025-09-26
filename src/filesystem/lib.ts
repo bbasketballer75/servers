@@ -4,7 +4,7 @@ import os from 'os';
 import { randomBytes } from 'crypto';
 import { diffLines, createTwoFilesPatch } from 'diff';
 import minimatch from 'minimatch';
-import { normalizePath, expandHome } from './path-utils.js';
+import { normalizePath, expandHome, decodePossibleFileUri } from './path-utils.js';
 import { isPathWithinAllowedDirectories } from './path-validation.js';
 
 // Global allowed directories - set by the main module
@@ -74,7 +74,9 @@ export function createUnifiedDiff(originalContent: string, newContent: string, f
 
 // Security & Validation Functions
 export async function validatePath(requestedPath: string): Promise<string> {
-  const expandedPath = expandHome(requestedPath);
+  // Accept file:// URIs and percent-encoded strings by decoding them first
+  const decodedRequest = decodePossibleFileUri(requestedPath);
+  const expandedPath = expandHome(decodedRequest);
   const absolute = path.isAbsolute(expandedPath)
     ? path.resolve(expandedPath)
     : path.resolve(process.cwd(), expandedPath);

@@ -15,7 +15,7 @@ import path from "path";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import minimatch from "minimatch";
-import { normalizePath, expandHome } from './path-utils.js';
+import { normalizePath, expandHome, decodePossibleFileUri } from './path-utils.js';
 import { getValidRootDirectories } from './roots-utils.js';
 import {
   // Function imports
@@ -44,7 +44,9 @@ if (args.length === 0) {
 // Store allowed directories in normalized and resolved form
 let allowedDirectories = await Promise.all(
   args.map(async (dir) => {
-    const expanded = expandHome(dir);
+    // Decode file:// URIs and percent-encoding if present
+    const decoded = decodePossibleFileUri(dir);
+    const expanded = expandHome(decoded);
     const absolute = path.resolve(expanded);
     try {
       // Security: Resolve symlinks in allowed directories during startup

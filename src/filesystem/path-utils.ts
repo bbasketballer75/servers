@@ -102,3 +102,42 @@ export function expandHome(filepath: string): string {
   }
   return filepath;
 }
+
+export function fileUriToPath(uri: string): string {
+  try {
+    if (!uri || typeof uri !== 'string') return uri;
+    // Accept either file:///... or file://localhost/...
+    if (!uri.startsWith('file:')) return uri;
+    const u = new URL(uri);
+    let p = decodeURIComponent(u.pathname);
+    // On Windows the pathname may start with a leading slash for drive letters
+    if (process.platform === 'win32') {
+      if (p.startsWith('/') && /^[A-Za-z]:/.test(p.slice(1, 3))) {
+        p = p.slice(1);
+      }
+      // convert forward slashes to backslashes
+      p = p.replace(/\//g, '\\');
+    }
+    return p;
+  } catch {
+    // If parsing fails, return original value to avoid throwing inside utilities
+    try {
+      // Attempt a percent-decoding fallback
+      const withoutScheme = uri.replace(/^file:\/\//i, '');
+      const decoded = decodeURIComponent(withoutScheme);
+      return decoded;
+    } catch {
+      return uri;
+    }
+  }
+}
+
+export function decodePossibleFileUri(p: string): string {
+  if (typeof p !== 'string') return p;
+  if (p.startsWith('file:')) return fileUriToPath(p);
+  // Some clients send URIs that are percent-encoded without the scheme
+  if (p.match(/%[0-9A-Fa-f]{2}/)) {
+    try { return decodeURIComponent(p); } catch { return p }
+  }
+  return p;
+}

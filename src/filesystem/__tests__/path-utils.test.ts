@@ -172,4 +172,34 @@ describe('Path Utilities', () => {
       expect(expandHome('C:/test')).toBe('C:/test');
     });
   });
+
+  describe('file URI decoding', () => {
+    it('decodes file:// URIs with percent-encoding', () => {
+      if (process.platform === 'win32') {
+        const uri = 'file:///c%3A/Users/Test%20User/My%20Files';
+        const decoded = (globalThis as any).fileUriToPath ? (globalThis as any).fileUriToPath(uri) : undefined;
+        // If tests run in bundled/transpiled environment the exported function will exist
+        // Use direct import path-utils functions in runtime via import - but Jest will run TS
+        // Here simply call the module function via relative import
+        const { fileUriToPath } = require('../path-utils.js');
+        expect(fileUriToPath(uri)).toMatch(/C:\\Users\\Test User\\My Files$/);
+      } else {
+        const uri = 'file:///tmp/My%20Folder/Some%20File';
+        const { fileUriToPath } = require('../path-utils.js');
+        expect(fileUriToPath(uri)).toBe('/tmp/My Folder/Some File');
+      }
+    });
+
+    it('decodes percent-encoded raw strings without scheme', () => {
+      const { decodePossibleFileUri } = require('../path-utils.js');
+      if (process.platform === 'win32') {
+        const raw = 'C%3A%5CUsers%5CTest%20User';
+        const decoded = decodePossibleFileUri(raw);
+        expect(decoded).toMatch(/^C:\\Users\\Test User/);
+      } else {
+        const raw = '%2Ftmp%2FMy%20Folder%2Ffile.txt';
+        expect(decodePossibleFileUri(raw)).toBe('/tmp/My Folder/file.txt');
+      }
+    });
+  });
 });

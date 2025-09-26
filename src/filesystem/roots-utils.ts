@@ -1,7 +1,7 @@
 import { promises as fs, type Stats } from 'fs';
 import path from 'path';
 import os from 'os';
-import { normalizePath } from './path-utils.js';
+import { normalizePath, fileUriToPath } from './path-utils.js';
 import type { Root } from '@modelcontextprotocol/sdk/types.js';
 
 /**
@@ -11,9 +11,10 @@ import type { Root } from '@modelcontextprotocol/sdk/types.js';
  */
 async function parseRootUri(rootUri: string): Promise<string | null> {
   try {
-    const rawPath = rootUri.startsWith('file://') ? rootUri.slice(7) : rootUri;
-    const expandedPath = rawPath.startsWith('~/') || rawPath === '~' 
-      ? path.join(os.homedir(), rawPath.slice(1)) 
+    // Convert file:// URIs properly including percent-encoding
+    const rawPath = rootUri && rootUri.startsWith('file:') ? fileUriToPath(rootUri) : rootUri;
+    const expandedPath = rawPath.startsWith('~/') || rawPath === '~'
+      ? path.join(os.homedir(), rawPath.slice(1))
       : rawPath;
     const absolutePath = path.resolve(expandedPath);
     const resolvedPath = await fs.realpath(absolutePath);
