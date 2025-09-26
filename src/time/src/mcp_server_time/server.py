@@ -243,4 +243,27 @@ async def serve(local_timezone: str | None = None) -> None:
             _sys.stderr.flush()
         except Exception:
             pass
+        # Write a small health file to logs/ so orchestrator can watch file presence
+        try:
+            from pathlib import Path
+            def find_repo_root(pth: Path) -> Path:
+                cur = pth.resolve()
+                for _ in range(12):
+                    if (cur / 'package.json').exists() or (cur / '.git').exists():
+                        return cur
+                    cur = cur.parent
+                return pth
+            repo_root = find_repo_root(Path(__file__))
+            logs_dir = repo_root / 'logs'
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            health = logs_dir / 'time.ready'
+            tmp = logs_dir / ('.time.ready.tmp')
+            tmp.write_text('initialized')
+            tmp.replace(health)
+        except Exception:
+            try:
+                _sys.stderr.write('Failed to write health file for time\n')
+                _sys.stderr.flush()
+            except Exception:
+                pass
         await server.run(read_stream, write_stream, options)
