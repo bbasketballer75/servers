@@ -145,6 +145,14 @@ const GetFileInfoArgsSchema = z.object({
   path: z.string(),
 });
 
+// New: schema for wrapped plain-text log POSTs created by transport when JSON parsing fails
+export const LogRawNotificationSchema = z.object({
+  method: z.literal("log/raw"),
+  params: z.object({
+    text: z.string(),
+  }),
+});
+
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
@@ -664,6 +672,29 @@ server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
     }
   } catch (error) {
     console.error("Failed to request roots from client:", error instanceof Error ? error.message : String(error));
+  }
+});
+
+// New: handle plain-text POSTs that were wrapped by transport as 'log/raw' notifications
+server.setNotificationHandler(LogRawNotificationSchema, async (notification) => {
+  try {
+    const text = notification.params?.text ?? '';
+    // Mirror to stderr so existing log collection picks it up
+    console.error(`[mcp-log/raw] ${text}`);
+
+    // Forward as a structured MCP notification so connected clients see it as a message
+    // Use a safe short message and avoid throwing if client doesn't accept notifications
+    try {
+      await server.notification({
+        method: 'notifications/message',
+        params: { level: 'info', message: text.slice(0, 2000) },
+      });
+    } catch (notifyErr) {
+      // Swallow errors from notification sending to avoid cascading failures
+      console.error('Warning: failed to forward log/raw as notifications/message', notifyErr instanceof Error ? notifyErr.message : String(notifyErr));
+    }
+  } catch (err) {
+    console.error('Error handling log/raw notification:', err instanceof Error ? err.message : String(err));
   }
 });
 
