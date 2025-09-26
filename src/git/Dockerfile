@@ -1,39 +1,47 @@
-# Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS uv
+# ---- Base Node ----
+# Use a specific Node.js version known to work, Alpine for smaller size
+FROM node:23-alpine AS base
+WORKDIR /usr/src/app
+ENV NODE_ENV=production
 
-# Install the project into `/app`
-WORKDIR /app
+# ---- Dependencies ----
+# Install dependencies first to leverage Docker cache
+FROM base AS deps
+WORKDIR /usr/src/app
+COPY package.json package-lock.json* ./
+# Use npm ci for deterministic installs based on lock file
+# Install only production dependencies in this stage for the final image
+RUN npm ci --only=production
 
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
+# ---- Builder ----
+# Build the application
+FROM base AS builder
+WORKDIR /usr/src/app
+# Copy dependency manifests and install *all* dependencies (including dev)
+COPY package.json package-lock.json* ./
+RUN npm ci
+# Copy the rest of the source code
+COPY . .
+# Build the TypeScript project
+RUN npm run build
 
-# Copy from the cache instead of linking since it's a mounted volume
-ENV UV_LINK_MODE=copy
+# ---- Runner ----
+# Final stage with only production dependencies and built code
+FROM base AS runner
+WORKDIR /usr/src/app
+# Copy production node_modules from the 'deps' stage
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+# Copy built application from the 'builder' stage
+COPY --from=builder /usr/src/app/dist ./dist
+# Copy package.json (needed for potential runtime info, like version)
+COPY package.json .
 
-# Install the project's dependencies using the lockfile and settings
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev --no-editable
+# Create a non-root user and switch to it
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal layer caching
-ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable
+# Expose port if the application runs a server (adjust if needed)
+# EXPOSE 3000
 
-FROM python:3.12-slim-bookworm
-
-RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/* \
-    && git lfs install --system
-
-WORKDIR /app
- 
-COPY --from=uv /root/.local /root/.local
-COPY --from=uv --chown=app:app /app/.venv /app/.venv
-
-# Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
-
-# when running the container, add --db-path and a bind mount to the host's db file
-ENTRYPOINT ["mcp-server-git"]
+# Command to run the application
+CMD ["node", "dist/index.js"]
