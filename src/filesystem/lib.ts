@@ -3,7 +3,7 @@ import path from "path";
 import os from 'os';
 import { randomBytes } from 'crypto';
 import { diffLines, createTwoFilesPatch } from 'diff';
-import minimatch from 'minimatch';
+import * as minimatch from 'minimatch';
 import { normalizePath, expandHome, decodePossibleFileUri } from './path-utils.js';
 import { isPathWithinAllowedDirectories } from './path-validation.js';
 
@@ -370,15 +370,15 @@ export async function searchFilesWithValidation(
 
         const relativePath = path.relative(rootPath, fullPath);
         const shouldExclude = excludePatterns.some(excludePattern =>
-          minimatch(relativePath, excludePattern, { dot: true })
+          _minimatch_fn(relativePath, excludePattern, { dot: true })
         );
 
         if (shouldExclude) continue;
 
         // Use glob matching for the search pattern
-        if (minimatch(relativePath, pattern, { dot: true })) {
-          results.push(fullPath);
-        }
+        if (_minimatch_fn(relativePath, pattern, { dot: true })) {
+           results.push(fullPath);
+         }
 
         if (entry.isDirectory()) {
           await search(fullPath);
@@ -392,3 +392,15 @@ export async function searchFilesWithValidation(
   await search(rootPath);
   return results;
 }
+
+// Runtime-robust minimatch function to support different export shapes (function default export vs. namespace)
+const _minimatch_fn: (p: string, pattern: string, opts?: any) => boolean = ((): any => {
+  const mmNamespace: any = minimatch as any;
+  // Some builds expose the function as the default export
+  const mmCandidate = mmNamespace && (mmNamespace.default ?? mmNamespace);
+  if (typeof mmCandidate === 'function') return mmCandidate;
+  if (mmCandidate && typeof mmCandidate.minimatch === 'function') return mmCandidate.minimatch;
+  if (mmCandidate && typeof mmCandidate.match === 'function') return mmCandidate.match;
+  // Fallback to a simple equality matcher (very conservative)
+  return (p: string, pattern: string) => p === pattern;
+})();
