@@ -117,6 +117,10 @@ export function fileUriToPath(uri: string): string {
       }
       // convert forward slashes to backslashes
       p = p.replace(/\//g, '\\');
+      // Ensure drive letter is capitalized for consistency (tests expect uppercase drive)
+      if (/^[a-z]:\\/.test(p)) {
+        p = p.charAt(0).toUpperCase() + p.slice(1);
+      }
     }
     return p;
   } catch {

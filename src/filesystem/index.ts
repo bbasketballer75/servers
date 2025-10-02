@@ -29,54 +29,8 @@ import {
   tailFile,
   headFile,
   setAllowedDirectories,
+  getAllowedDirectories,
 } from './lib.js';
-
-// Command line argument parsing
-const args = process.argv.slice(2);
-if (args.length === 0) {
-  console.error("Usage: mcp-server-filesystem [allowed-directory] [additional-directories...]");
-  console.error("Note: Allowed directories can be provided via:");
-  console.error("  1. Command-line arguments (shown above)");
-  console.error("  2. MCP roots protocol (if client supports it)");
-  console.error("At least one directory must be provided by EITHER method for the server to operate.");
-}
-
-// Store allowed directories in normalized and resolved form
-let allowedDirectories = await Promise.all(
-  args.map(async (dir) => {
-    // Decode file:// URIs and percent-encoding if present
-    const decoded = decodePossibleFileUri(dir);
-    const expanded = expandHome(decoded);
-    const absolute = path.resolve(expanded);
-    try {
-      // Security: Resolve symlinks in allowed directories during startup
-      // This ensures we know the real paths and can validate against them later
-      const resolved = await fs.realpath(absolute);
-      return normalizePath(resolved);
-    } catch (error) {
-      // If we can't resolve (doesn't exist), use the normalized absolute path
-      // This allows configuring allowed dirs that will be created later
-      return normalizePath(absolute);
-    }
-  })
-);
-
-// Validate that all directories exist and are accessible
-await Promise.all(allowedDirectories.map(async (dir) => {
-  try {
-    const stats = await fs.stat(dir);
-    if (!stats.isDirectory()) {
-      console.error(`Error: ${dir} is not a directory`);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error(`Error accessing directory ${dir}:`, error);
-    process.exit(1);
-  }
-}));
-
-// Initialize the global allowedDirectories in lib.ts
-setAllowedDirectories(allowedDirectories);
 
 // Schema definitions
 const ReadTextFileArgsSchema = z.object({
@@ -609,7 +563,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for search_files: ${parsed.error}`);
         }
         const validPath = await validatePath(parsed.data.path);
-        const results = await searchFilesWithValidation(validPath, parsed.data.pattern, allowedDirectories, { excludePatterns: parsed.data.excludePatterns });
+        const results = await searchFilesWithValidation(validPath, parsed.data.pattern, getAllowedDirectories(), { excludePatterns: parsed.data.excludePatterns });
         return {
           content: [{ type: "text", text: results.length > 0 ? results.join("\n") : "No matches found" }],
         };
@@ -633,7 +587,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return {
           content: [{
             type: "text",
-            text: `Allowed directories:\n${allowedDirectories.join('\n')}`
+            text: `Allowed directories:\n${getAllowedDirectories().join('\n')}`
           }],
         };
       }
@@ -654,8 +608,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function updateAllowedDirectoriesFromRoots(requestedRoots: Root[]) {
   const validatedRootDirs = await getValidRootDirectories(requestedRoots);
   if (validatedRootDirs.length > 0) {
-    allowedDirectories = [...validatedRootDirs];
-    setAllowedDirectories(allowedDirectories); // Update the global state in lib.ts
+    // Update global state in lib.ts; avoid keeping duplicate local state
+    setAllowedDirectories(validatedRootDirs);
     console.error(`Updated allowed directories from MCP roots: ${validatedRootDirs.length} valid directories`);
   } else {
     console.error("No valid root directories provided by client");
@@ -714,25 +668,83 @@ server.oninitialized = async () => {
       console.error("Failed to request initial roots from client:", error instanceof Error ? error.message : String(error));
     }
   } else {
-    if (allowedDirectories.length > 0) {
-      console.error("Client does not support MCP Roots, using allowed directories set from server args:", allowedDirectories);
-    }else{
+    if (getAllowedDirectories().length > 0) {
+      console.error("Client does not support MCP Roots, using allowed directories set from server args:", getAllowedDirectories());
+    } else {
       throw new Error(`Server cannot operate: No allowed directories available. Server was started without command-line directories and client either does not support MCP roots protocol or provided empty roots. Please either: 1) Start server with directory arguments, or 2) Use a client that supports MCP roots protocol and provides valid root directories.`);
     }
   }
 };
 
-// Start server
+// Start server helper
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Secure MCP Filesystem Server running on stdio");
-  if (allowedDirectories.length === 0) {
-    console.error("Started without allowed directories - waiting for client to provide roots via MCP protocol");
+  if (getAllowedDirectories().length === 0) {
+     console.error("Started without allowed directories - waiting for client to provide roots via MCP protocol");
+   }
+}
+
+// Main entrypoint invoked only when executed as a program. This avoids
+// running initialization during `import` in unit tests.
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    console.error("Usage: mcp-server-filesystem [allowed-directory] [additional-directories...]");
+    console.error("Note: Allowed directories can be provided via:");
+    console.error("  1. Command-line arguments (shown above)");
+    console.error("  2. MCP roots protocol (if client supports it)");
+    console.error("At least one directory must be provided by EITHER method for the server to operate.");
+  }
+
+  const computedAllowedDirectories = await Promise.all(
+    args.map(async (dir) => {
+       // Decode file:// URIs and percent-encoding if present
+      const decoded = decodePossibleFileUri(dir);
+      const expanded = expandHome(decoded);
+      const absolute = path.resolve(expanded);
+      try {
+        // Security: Resolve symlinks in allowed directories during startup
+        // This ensures we know the real paths and can validate against them later
+        const resolved = await fs.realpath(absolute);
+        return normalizePath(resolved);
+      } catch (error) {
+        // If we can't resolve (doesn't exist), use the normalized absolute path
+        // This allows configuring allowed dirs that will be created later
+        return normalizePath(absolute);
+      }
+    })
+  );
+
+  // Validate that all directories exist and are accessible
+  await Promise.all(
+    computedAllowedDirectories.map(async (dir) => {
+      try {
+        const stats = await fs.stat(dir);
+        if (!stats.isDirectory()) {
+          console.error(`Error: ${dir} is not a directory`);
+          process.exit(1);
+        }
+      } catch (error) {
+        console.error(`Error accessing directory ${dir}:`, error);
+        process.exit(1);
+      }
+    })
+  );
+
+  // Initialize the global allowedDirectories in lib.ts
+  setAllowedDirectories(computedAllowedDirectories);
+
+  try {
+    await runServer();
+  } catch (error) {
+    console.error("Fatal error running server:", error);
+    process.exit(1);
   }
 }
 
-runServer().catch((error) => {
-  console.error("Fatal error running server:", error);
-  process.exit(1);
-});
+// Only run the server when not running under Jest (tests import this module)
+if (!process.env.JEST_WORKER_ID) {
+  main();
+}
